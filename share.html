@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>우리의 제주 여행</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;800&display=swap');
+  :root {
+    --bg: #faf8f5; --card: #fff; --text: #3a3532; --sub: #8a8380;
+    --accent: #b07d62; --accent-light: #f3ece6; --border: #e8e2dc;
+    --day1: #7986cb; --day2: #66bb6a; --day3: #ffb74d; --day4: #ef5350;
+    --confirm: #66bb6a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans KR', -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #b07d62 0%, #d4a987 50%, #e8cbb0 100%);
+    color: #fff; text-align: center; padding: 48px 20px 40px;
+    position: relative; overflow: hidden;
+  }
+  .hero::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 40px;
+    background: var(--bg); border-radius: 40px 40px 0 0;
+  }
+  .hero h1 { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+  .hero .sub { font-size: 15px; opacity: .85; margin-top: 6px; }
+  .hero .date-badge {
+    display: inline-block; margin-top: 14px; padding: 8px 24px;
+    background: rgba(255,255,255,.2); border-radius: 30px; font-size: 14px; font-weight: 600;
+    backdrop-filter: blur(4px);
+  }
+
+  /* Nav */
+  nav { position: sticky; top: 0; z-index: 1000; background: var(--card); border-bottom: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  nav a { display: inline-block; padding: 13px 18px; text-decoration: none; color: var(--sub); font-size: 13px; font-weight: 600; border-bottom: 3px solid transparent; transition: .2s; }
+  nav a:hover, nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 0 16px 80px; }
+  section { padding-top: 24px; margin-bottom: 36px; }
+  h2 { font-size: 19px; font-weight: 800; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--accent); color: var(--accent); }
+
+  /* Flight */
+  .flight-card { background: var(--card); border-radius: 16px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,.05); margin-bottom: 14px; }
+  .flight-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; }
+  .flight-point { text-align: center; }
+  .flight-point .code { font-size: 22px; font-weight: 800; }
+  .flight-point .time { font-size: 17px; font-weight: 600; color: var(--accent); }
+  .flight-point .label { font-size: 12px; color: var(--sub); }
+  .flight-line { flex: 1; text-align: center; position: relative; }
+  .flight-line::before { content: ''; position: absolute; top: 50%; left: 10%; right: 10%; height: 2px; background: var(--border); }
+  .flight-line span { position: relative; background: var(--card); padding: 2px 8px; font-size: 12px; color: var(--sub); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .badge-economy { background: #e8f5e9; color: #2e7d32; }
+  .badge-prestige { background: #fff3e0; color: #e65100; }
+  .booking-ref { text-align: center; font-size: 13px; color: var(--sub); margin-top: 8px; }
+  .booking-ref strong { color: var(--text); font-size: 15px; letter-spacing: 2px; }
+
+  /* Day cards */
+  .day-header { color: #fff; padding: 14px 18px; border-radius: 14px 14px 0 0; font-weight: 700; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .day-header .tag { font-size: 12px; background: rgba(255,255,255,.25); padding: 3px 12px; border-radius: 12px; }
+  .day-body { background: var(--card); border-radius: 0 0 14px 14px; padding: 18px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,.05); }
+  .tl-item { display: flex; gap: 14px; padding: 11px 0; border-bottom: 1px solid #f5f0eb; }
+  .tl-item:last-child { border-bottom: none; }
+  .tl-time { min-width: 55px; font-size: 13px; font-weight: 700; color: var(--accent); padding-top: 2px; }
+  .tl-content { flex: 1; }
+  .tl-content .name { font-weight: 700; font-size: 15px; }
+  .tl-content .name a { text-decoration: none; color: inherit; border-bottom: 1px dashed var(--accent); }
+  .tl-content .name a:hover { color: var(--accent); }
+  .tl-content .desc { font-size: 13px; color: var(--sub); margin-top: 2px; }
+  .tl-tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 8px; margin-top: 4px; margin-right: 4px; }
+  .tl-tag.spot { background: #e8f5e9; color: #2e7d32; }
+  .tl-tag.food { background: #fff3e0; color: #e65100; }
+  .tl-tag.open { background: #f3e5f5; color: #7b1fa2; }
+  .tl-tag.pick { background: #e8f5e9; color: #2e7d32; border: 1px solid #2e7d32; }
+  .tl-tag.confirm { background: var(--confirm); color: #fff; }
+  .tl-num { display: inline-block; font-size: 11px; font-weight: 700; color: #fff; padding: 1px 7px; border-radius: 4px; margin-right: 6px; vertical-align: middle; }
+
+  /* Hotel confirmed */
+  .hotel-confirmed {
+    background: var(--card); border-radius: 16px; padding: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.05); border-left: 4px solid var(--confirm);
+    margin-bottom: 12px;
+  }
+  .hotel-confirmed .hotel-name { font-size: 17px; font-weight: 800; margin-bottom: 2px; }
+  .hotel-confirmed .hotel-room { font-size: 14px; color: var(--accent); font-weight: 600; margin-bottom: 6px; }
+  .hotel-confirmed .hotel-detail { font-size: 13px; color: var(--sub); line-height: 1.8; }
+  .hotel-confirmed .hotel-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .hotel-confirmed .hotel-tags span { font-size: 11px; padding: 3px 10px; border-radius: 8px; background: var(--accent-light); color: var(--accent); font-weight: 600; }
+
+  /* Map */
+  .map-wrap { border-radius: 14px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+  .map-wrap .map { height: 380px; }
+
+  /* Compare */
+  .compare-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .compare-card { background: var(--card); border-radius: 14px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,.05); position: relative; }
+  .compare-card.recommended { border: 2px solid var(--accent); }
+  .compare-card .rec-badge { position: absolute; top: -10px; left: 16px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 12px; }
+  .compare-card .alt-badge { position: absolute; top: -10px; left: 16px; background: var(--sub); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 12px; }
+  .compare-card h3 { margin-top: 8px; font-size: 15px; }
+  .compare-card .reason { font-size: 13px; color: var(--sub); margin-top: 8px; line-height: 1.7; }
+  .compare-card .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .compare-card .tags span { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: var(--accent-light); color: var(--accent); font-weight: 600; }
+
+  /* Food */
+  .food-card { background: var(--card); border-radius: 14px; padding: 14px 18px; box-shadow: 0 2px 12px rgba(0,0,0,.05); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .food-card .food-name { font-weight: 700; font-size: 15px; }
+  .food-card .food-name a { text-decoration: none; color: inherit; border-bottom: 1px dashed var(--accent); }
+  .food-card .food-desc { font-size: 12px; color: var(--sub); }
+  .food-card .food-day { font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-light); padding: 4px 12px; border-radius: 8px; white-space: nowrap; }
+  .food-card .food-day.confirmed { background: var(--confirm); color: #fff; }
+
+  h3.food-h { font-size: 14px; font-weight: 700; margin: 16px 0 8px; color: var(--sub); }
+
+  footer { text-align: center; padding: 32px 16px; font-size: 12px; color: var(--sub); }
+
+  @media (max-width: 600px) {
+    .hero h1 { font-size: 26px; }
+    .compare-wrap { grid-template-columns: 1fr; }
+    .map-wrap .map { height: 300px; }
+    nav a { padding: 12px 14px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>우리의 제주 여행</h1>
+  <div class="sub">3박 4일 힐링 로드</div>
+  <div class="date-badge">4월 8일 (수) ~ 11일 (토)</div>
+</div>
+
+<nav>
+  <a href="#flight" class="active">항공편</a>
+  <a href="#route">경로</a>
+  <a href="#schedule">일정표</a>
+  <a href="#hotels">숙소</a>
+  <a href="#day3-choice">DAY3 선택</a>
+  <a href="#food">맛집</a>
+</nav>
+
+<div class="container">
+
+<!-- FLIGHT -->
+<section id="flight">
+  <h2>항공편</h2>
+  <div class="flight-card">
+    <div style="font-weight:700; font-size:14px; margin-bottom:8px;">가는 편 &mdash; 4/8 (수)</div>
+    <div class="flight-row">
+      <div class="flight-point"><div class="time">20:30</div><div class="code">GMP</div><div class="label">김포</div></div>
+      <div class="flight-line"><span>KE1227</span></div>
+      <div class="flight-point"><div class="time">21:45</div><div class="code">CJU</div><div class="label">제주</div></div>
+    </div>
+    <div style="text-align:center;"><span class="badge badge-economy">일반석</span></div>
+  </div>
+  <div class="flight-card">
+    <div style="font-weight:700; font-size:14px; margin-bottom:8px;">오는 편 &mdash; 4/11 (토)</div>
+    <div class="flight-row">
+      <div class="flight-point"><div class="time">20:20</div><div class="code">CJU</div><div class="label">제주</div></div>
+      <div class="flight-line"><span>KE1326</span></div>
+      <div class="flight-point"><div class="time">21:35</div><div class="code">GMP</div><div class="label">김포</div></div>
+    </div>
+    <div style="text-align:center;"><span class="badge badge-prestige">프레스티지석</span></div>
+  </div>
+  <div class="booking-ref">예약번호 <strong>FCLVHH</strong></div>
+</section>
+
+<!-- ROUTE MAP -->
+<section id="route">
+  <h2>전체 이동 경로</h2>
+  <div class="map-wrap"><div id="map-route" class="map" style="height:420px;"></div></div>
+</section>
+
+<!-- SCHEDULE -->
+<section id="schedule">
+  <h2>일정표</h2>
+
+  <!-- DAY 1 -->
+  <div class="day-header" style="background:var(--day1);">DAY 1 &mdash; 4/8 (수) <span class="tag">도착</span></div>
+  <div class="day-body">
+    <div class="tl-item">
+      <div class="tl-time">20:30</div>
+      <div class="tl-content">
+        <div class="name">김포공항 출발</div>
+        <div class="desc">KE1227</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">21:45</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day1);">1-1</span><a href="https://map.naver.com/p/search/%EC%A0%9C%EC%A3%BC%EA%B5%AD%EC%A0%9C%EA%B3%B5%ED%95%AD" target="_blank">제주공항 도착</a></div>
+        <div class="desc">렌트카 픽업 후 숙소로 이동</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">22:30~</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day1);">1-2</span><a href="https://map.naver.com/p/search/%EA%B7%B8%EB%9D%BC%EB%B2%A8%ED%98%B8%ED%85%94%20%EC%A0%9C%EC%A3%BC" target="_blank">그라벨호텔 체크인</a></div>
+        <div class="desc">제주시 일주서로 7316</div>
+        <span class="tl-tag confirm">예약완료</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">~23:00</div>
+      <div class="tl-content">
+        <div class="name"><a href="https://map.naver.com/p/search/%EC%A0%9C%EC%A3%BC%20%EC%97%B0%EB%8F%99%20%EB%A8%B9%EC%9E%90%EA%B3%A8%EB%AA%A9" target="_blank">연동 먹자골목에서 야식</a></div>
+        <div class="desc">올래국수, 삼대국수회관 등 &mdash; 현장에서 선택</div>
+        <span class="tl-tag food">야식</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 2 -->
+  <div class="day-header" style="background:var(--day2);">DAY 2 &mdash; 4/9 (목) <span class="tag">애월 힐링</span></div>
+  <div class="day-body">
+    <div class="tl-item">
+      <div class="tl-time">오전</div>
+      <div class="tl-content">
+        <div class="name">늦잠 + 브런치</div>
+        <div class="desc">여유롭게 출발</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">낮</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day2);">2-1</span><a href="https://map.naver.com/p/search/%ED%95%9C%EB%8B%B4%ED%95%B4%EC%95%88%EC%82%B0%EC%B1%85%EB%A1%9C" target="_blank">애월 카페거리 + 한담해안산책로</a></div>
+        <div class="desc">해안 절벽 따라 1.2km 데크길 산책</div>
+        <span class="tl-tag spot">산책</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">점심</div>
+      <div class="tl-content">
+        <div class="name">점심 미정</div>
+        <div class="desc">애월 근처에서 같이 정하기</div>
+        <span class="tl-tag open">미정</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">오후</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day2);">2-2</span><a href="https://map.naver.com/p/search/%ED%98%91%EC%9E%AC%ED%95%B4%EC%88%98%EC%9A%95%EC%9E%A5" target="_blank">협재해수욕장</a></div>
+        <div class="desc">에메랄드빛 바다 + 비양도 조망</div>
+        <span class="tl-tag spot">바다</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">18:20</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day2);">2-3</span><a href="https://map.naver.com/p/search/%EC%83%88%EB%B3%84%EC%98%A4%EB%A6%84" target="_blank">새별오름 일몰</a></div>
+        <div class="desc">20분 등반, 정상 360도 뷰 + 유채꽃 &middot; 일몰 ~19:05</div>
+        <span class="tl-tag spot">일몰</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">저녁</div>
+      <div class="tl-content">
+        <div class="name">저녁 미정</div>
+        <div class="desc">애월 근처에서 같이 정하기</div>
+        <span class="tl-tag open">미정</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">밤</div>
+      <div class="tl-content">
+        <div class="name"><a href="https://map.naver.com/p/search/%EC%8A%A4%ED%83%A0%ED%8F%AC%EB%93%9C%ED%98%B8%ED%85%94%EC%A0%9C%EC%A3%BC" target="_blank">스탠포드 호텔 제주</a> 체크인</div>
+        <div class="desc">디럭스 트윈 오션뷰 &middot; 모바일 셀프체크인</div>
+        <span class="tl-tag confirm">예약완료</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 3 -->
+  <div class="day-header" style="background:var(--day3);">DAY 3 &mdash; 4/10 (금) <span class="tag">서귀포</span></div>
+  <div class="day-body">
+    <div class="tl-item">
+      <div class="tl-time">오전</div>
+      <div class="tl-content">
+        <div class="name">체크아웃, 여유롭게 출발</div>
+        <div class="desc">애월 &rarr; 서귀포 해안도로</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">낮</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day3);">3-1</span><a href="https://map.naver.com/p/search/%EC%82%B0%EB%B0%A9%EC%82%B0" target="_blank">산방산 + 용머리해안</a></div>
+        <div class="desc">유채꽃밭 + 해안절벽 산책 &middot; 대안: 치유의숲</div>
+        <span class="tl-tag spot">추천 경유지</span>
+        <br><a href="#day3-choice" style="font-size:12px;font-weight:600;margin-top:4px;display:inline-block;">&darr; 같이 정하기</a>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">15:00</div>
+      <div class="tl-content">
+        <div class="name"><a href="https://map.naver.com/p/search/%ED%8C%8C%EB%A5%B4%EB%82%98%EC%8A%A4%ED%98%B8%ED%85%94%EC%A0%9C%EC%A3%BC" target="_blank">파르나스 호텔 제주</a> 체크인</div>
+        <div class="desc">딜럭스 킹 오션뷰 &middot; 인피니티풀</div>
+        <span class="tl-tag confirm">예약완료</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">늦은오후</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day3);">3-2</span><a href="https://map.naver.com/p/search/%EC%A4%91%EB%AC%B8%20%EC%A3%BC%EC%83%81%EC%A0%88%EB%A6%AC%EB%8C%80" target="_blank">중문 주상절리</a> or <a href="https://map.naver.com/p/search/%EC%84%9C%EA%B7%80%ED%8F%AC%EB%A7%A4%EC%9D%BC%EC%98%AC%EB%A0%88%EC%8B%9C%EC%9E%A5" target="_blank">올레시장</a></div>
+        <div class="desc">컨디션에 따라 택 1</div>
+        <span class="tl-tag open">현장 선택</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">저녁</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day3);">3-3</span><a href="https://map.naver.com/p/search/%EC%98%81%EB%B9%88%ED%9A%9F%EC%A7%91%20%EC%84%9C%EA%B7%80%ED%8F%AC" target="_blank">영빈횟집</a></div>
+        <div class="desc">서귀포 바닷가 횟집</div>
+        <span class="tl-tag pick">확정</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 4 -->
+  <div class="day-header" style="background:var(--day4);">DAY 4 &mdash; 4/11 (토) <span class="tag">마지막 날</span></div>
+  <div class="day-body">
+    <div class="tl-item">
+      <div class="tl-time">오전</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day4);">4-1</span><a href="https://map.naver.com/p/search/%EC%87%A0%EC%86%8C%EA%B9%8D" target="_blank">쇠소깍</a></div>
+        <div class="desc">투명카약 체험 or 해안 산책</div>
+        <span class="tl-tag spot">체험</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">점심</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day4);">4-2</span><a href="https://map.naver.com/p/search/%EC%A0%9C%EC%A3%BC%20%EB%8F%99%EB%AC%B8%EC%8B%9C%EC%9E%A5" target="_blank">동문시장</a></div>
+        <div class="desc">제주 대표 시장 &mdash; 먹거리 + 선물</div>
+        <span class="tl-tag food">점심</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">17:00</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day4);">4-3</span><a href="https://map.naver.com/p/search/%EB%8A%98%EB%B4%84%ED%9D%91%EB%8F%BC%EC%A7%80" target="_blank">늘봄 흑돼지</a></div>
+        <div class="desc">공항 근처 &middot; 마지막 저녁</div>
+        <span class="tl-tag pick">확정</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">19:00</div>
+      <div class="tl-content">
+        <div class="name"><span class="tl-num" style="background:var(--day4);">4-4</span>제주공항 도착</div>
+        <div class="desc">렌트카 반납 &rarr; 체크인</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">20:20</div>
+      <div class="tl-content">
+        <div class="name">제주 출발</div>
+        <div class="desc">KE1326 &rarr; 김포 21:35</div>
+        <span class="badge badge-prestige" style="margin-top:4px;">프레스티지석</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOTELS -->
+<section id="hotels">
+  <h2>숙소</h2>
+
+  <div class="hotel-confirmed">
+    <div style="font-size:12px;font-weight:700;color:var(--confirm);margin-bottom:6px;">DAY 1 &mdash; 4/8 (수)</div>
+    <div class="hotel-name"><a href="https://map.naver.com/p/search/%EA%B7%B8%EB%9D%BC%EB%B2%A8%ED%98%B8%ED%85%94%20%EC%A0%9C%EC%A3%BC" target="_blank">그라벨호텔</a></div>
+    <div class="hotel-detail">제주시 일주서로 7316</div>
+  </div>
+
+  <div class="hotel-confirmed">
+    <div style="font-size:12px;font-weight:700;color:var(--confirm);margin-bottom:6px;">DAY 2 &mdash; 4/9 (목)</div>
+    <div class="hotel-name"><a href="https://map.naver.com/p/search/%EC%8A%A4%ED%83%A0%ED%8F%AC%EB%93%9C%ED%98%B8%ED%85%94%EC%A0%9C%EC%A3%BC" target="_blank">스탠포드 호텔 제주</a></div>
+    <div class="hotel-room">디럭스 트윈 오션뷰</div>
+    <div class="hotel-detail">
+      애월읍 애월해안로 408<br>
+      체크인 15:00 &middot; 체크아웃 11:00 &middot; 모바일 셀프체크인<br>
+      무료주차 &middot; 금연
+    </div>
+    <div class="hotel-tags">
+      <span>오션뷰</span><span>셀프체크인</span><span>무료주차</span>
+    </div>
+  </div>
+
+  <div class="hotel-confirmed">
+    <div style="font-size:12px;font-weight:700;color:var(--confirm);margin-bottom:6px;">DAY 3 &mdash; 4/10 (금)</div>
+    <div class="hotel-name"><a href="https://map.naver.com/p/search/%ED%8C%8C%EB%A5%B4%EB%82%98%EC%8A%A4%ED%98%B8%ED%85%94%EC%A0%9C%EC%A3%BC" target="_blank">파르나스 호텔 제주</a></div>
+    <div class="hotel-room">딜럭스 킹 오션뷰</div>
+    <div class="hotel-detail">
+      서귀포시 색달동 3039-1<br>
+      체크인 15:00 &middot; 체크아웃 11:00
+    </div>
+    <div class="hotel-tags">
+      <span>주상절리 위</span><span>인피니티풀</span><span>테라스</span><span>오션뷰</span>
+    </div>
+  </div>
+</section>
+
+<!-- DAY 3 CHOICE -->
+<section id="day3-choice">
+  <h2>DAY 3 경유지 &mdash; 어디로 갈까?</h2>
+  <p style="font-size:13px; color:var(--sub); margin-bottom:20px;">
+    애월에서 서귀포로 이동하면서 한 곳 들르기
+  </p>
+  <div class="compare-wrap">
+    <div class="compare-card recommended">
+      <div class="rec-badge">추천</div>
+      <h3><a href="https://map.naver.com/p/search/%EC%82%B0%EB%B0%A9%EC%82%B0" target="_blank">산방산 + 용머리해안</a></h3>
+      <div style="font-size:13px; margin-top:4px; color:var(--sub);">서귀포시 안덕면 &middot; 1.5~2시간</div>
+      <div class="reason">
+        - 산방산 앞 <strong>유채꽃밭</strong>이 4월 한창<br>
+        - 산 + 유채 + 바다 = 제주 시그니처<br>
+        - 용머리해안 절벽 산책 &middot; 야외 힐링<br>
+        - 동선 최적 (애월 &rarr; 산방산 &rarr; 중문 20분)
+      </div>
+      <div class="tags">
+        <span>유채꽃</span><span>해안절벽</span><span>야외</span>
+      </div>
+    </div>
+    <div class="compare-card">
+      <div class="alt-badge">대안</div>
+      <h3><a href="https://map.naver.com/p/search/%EC%84%9C%EA%B7%80%ED%8F%AC%EC%B9%98%EC%9C%A0%EC%9D%98%EC%88%B2" target="_blank">서귀포 치유의숲</a></h3>
+      <div style="font-size:13px; margin-top:4px; color:var(--sub);">서귀포시 산록남로 2271 &middot; 1~1.5시간</div>
+      <div class="reason">
+        - 바다보다 <strong>숲 힐링</strong>이 끌릴 때<br>
+        - 편백숲 맨발걷기, 숲 명상<br>
+        - 조용한 힐링 원할 때
+      </div>
+      <div class="tags">
+        <span>편백숲</span><span>맨발걷기</span><span>조용함</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOD -->
+<section id="food">
+  <h2>맛집 리스트</h2>
+
+  <h3 class="food-h">DAY 1 (4/8) &mdash; 야식</h3>
+  <div class="food-card">
+    <div>
+      <div class="food-name"><a href="https://map.naver.com/p/search/%EC%A0%9C%EC%A3%BC%20%EC%97%B0%EB%8F%99%20%EB%A8%B9%EC%9E%90%EA%B3%A8%EB%AA%A9" target="_blank">연동 먹자골목</a></div>
+      <div class="food-desc">올래국수 / 삼대국수회관 등</div>
+    </div>
+    <div class="food-day">현장 선택</div>
+  </div>
+
+  <h3 class="food-h">DAY 2 (4/9) &mdash; 애월</h3>
+  <div class="food-card">
+    <div>
+      <div class="food-name">점심 &amp; 저녁</div>
+      <div class="food-desc">같이 정하기</div>
+    </div>
+    <div class="food-day">미정</div>
+  </div>
+
+  <h3 class="food-h">DAY 3 (4/10) &mdash; 서귀포</h3>
+  <div class="food-card">
+    <div>
+      <div class="food-name"><a href="https://map.naver.com/p/search/%EC%98%81%EB%B9%88%ED%9A%9F%EC%A7%91%20%EC%84%9C%EA%B7%80%ED%8F%AC" target="_blank">영빈횟집</a></div>
+      <div class="food-desc">서귀포 바닷가 횟집</div>
+    </div>
+    <div class="food-day confirmed">확정</div>
+  </div>
+
+  <h3 class="food-h">DAY 4 (4/11) &mdash; 제주시</h3>
+  <div class="food-card">
+    <div>
+      <div class="food-name"><a href="https://map.naver.com/p/search/%EC%A0%9C%EC%A3%BC%20%EB%8F%99%EB%AC%B8%EC%8B%9C%EC%9E%A5" target="_blank">동문시장</a></div>
+      <div class="food-desc">제주 대표 전통시장</div>
+    </div>
+    <div class="food-day">점심</div>
+  </div>
+  <div class="food-card">
+    <div>
+      <div class="food-name"><a href="https://map.naver.com/p/search/%EB%8A%98%EB%B4%84%ED%9D%91%EB%8F%BC%EC%A7%80" target="_blank">늘봄 흑돼지</a></div>
+      <div class="food-desc">공항 근처 &middot; 마지막 저녁</div>
+    </div>
+    <div class="food-day confirmed">확정</div>
+  </div>
+</section>
+
+</div>
+
+<footer>우리의 제주 여행 2026</footer>
+
+<script>
+// Nav scroll highlight
+const sections = document.querySelectorAll('section');
+const navLinks = document.querySelectorAll('nav a');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 80) current = s.id; });
+  navLinks.forEach(a => { a.classList.toggle('active', a.getAttribute('href') === '#' + current); });
+});
+navLinks.forEach(a => a.addEventListener('click', e => {
+  e.preventDefault();
+  document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}));
+
+// Route Map
+const dayColors = { 1:'#7986cb', 2:'#66bb6a', 3:'#ffb74d', 4:'#ef5350' };
+
+function makeRouteIcon(label, color) {
+  return L.divIcon({ className: '', html: '<div style="background:'+color+';color:#fff;border-radius:8px;padding:2px 7px;font-size:11px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;">'+label+'</div>', iconSize:[null,null], iconAnchor:[20,12] });
+}
+
+const mR = L.map('map-route').setView([33.380, 126.420], 10);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'&copy; CARTO',maxZoom:18}).addTo(mR);
+
+const routePoints = [
+  { pos:[33.511,126.493], label:'1-1', name:'제주공항 도착', day:1 },
+  { pos:[33.489,126.498], label:'1-2', name:'그라벨호텔', day:1 },
+  { pos:[33.463,126.310], label:'2-1', name:'한담해안산책로', day:2 },
+  { pos:[33.394,126.240], label:'2-2', name:'협재해수욕장', day:2 },
+  { pos:[33.363,126.334], label:'2-3', name:'새별오름', day:2 },
+  { pos:[33.456,126.312], label:'H', name:'스탠포드 호텔', day:2 },
+  { pos:[33.237,126.313], label:'3-1', name:'산방산+용머리해안', day:3 },
+  { pos:[33.245,126.422], label:'H', name:'파르나스 호텔', day:3 },
+  { pos:[33.244,126.425], label:'3-2', name:'중문 주상절리', day:3 },
+  { pos:[33.248,126.567], label:'3-3', name:'영빈횟집', day:3 },
+  { pos:[33.246,126.623], label:'4-1', name:'쇠소깍', day:4 },
+  { pos:[33.512,126.528], label:'4-2', name:'동문시장', day:4 },
+  { pos:[33.489,126.487], label:'4-3', name:'늘봄 흑돼지', day:4 },
+  { pos:[33.511,126.493], label:'4-4', name:'제주공항 출발', day:4 },
+];
+
+routePoints.forEach(p => {
+  const icon = p.label === 'H'
+    ? L.divIcon({ className: '', html: '<div style="background:#b07d62;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.3);">H</div>', iconSize:[26,26], iconAnchor:[13,13] })
+    : makeRouteIcon(p.label, dayColors[p.day]);
+  L.marker(p.pos, {icon}).addTo(mR).bindPopup('<b>'+p.label+'</b> '+p.name);
+});
+
+// Day route lines
+const d1 = routePoints.filter(p=>p.day===1 && p.label!=='H').map(p=>p.pos);
+const d2 = routePoints.filter(p=>p.day===2).map(p=>p.pos);
+const d3 = routePoints.filter(p=>p.day===3).map(p=>p.pos);
+const d4 = routePoints.filter(p=>p.day===4).map(p=>p.pos);
+
+L.polyline(d1, {color:dayColors[1],weight:3,opacity:.7}).addTo(mR);
+L.polyline([d1[d1.length-1], d2[0]], {color:dayColors[1],weight:2,dashArray:'6,6',opacity:.4}).addTo(mR);
+L.polyline(d2, {color:dayColors[2],weight:3,opacity:.7}).addTo(mR);
+L.polyline([d2[d2.length-1], d3[0]], {color:dayColors[2],weight:2,dashArray:'6,6',opacity:.4}).addTo(mR);
+L.polyline(d3, {color:dayColors[3],weight:3,opacity:.7}).addTo(mR);
+L.polyline([d3[d3.length-1], d4[0]], {color:dayColors[3],weight:2,dashArray:'6,6',opacity:.4}).addTo(mR);
+L.polyline(d4, {color:dayColors[4],weight:3,opacity:.7}).addTo(mR);
+
+const rLeg = L.control({position:'bottomright'});
+rLeg.onAdd = function() {
+  const d = L.DomUtil.create('div');
+  d.style.cssText = 'background:#fff;padding:10px 14px;border-radius:10px;font-size:11px;box-shadow:0 2px 6px rgba(0,0,0,.12);line-height:2;';
+  d.innerHTML = '<b>이동 경로</b><br><span style="color:#7986cb;font-weight:700;">&#9644;</span> DAY 1<br><span style="color:#66bb6a;font-weight:700;">&#9644;</span> DAY 2 애월<br><span style="color:#ffb74d;font-weight:700;">&#9644;</span> DAY 3 서귀포<br><span style="color:#ef5350;font-weight:700;">&#9644;</span> DAY 4<br><span style="color:#b07d62;font-weight:700;">&#9679;</span> 숙소';
+  return d;
+};
+rLeg.addTo(mR);
+</script>
+</body>
+</html>
